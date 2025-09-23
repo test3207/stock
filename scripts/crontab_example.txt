@@ -1,0 +1,18 @@
+
+# 实时模拟系统 Crontab 配置示例
+# 复制并修改路径后添加到 crontab -e
+
+# 每日上午9:00执行数据更新
+0 9 * * 1-5 /path/to/stock/scripts/data_update.sh
+
+# 每日上午9:30执行调仓检查  
+30 9 * * 1-5 /path/to/stock/scripts/daily_rebalance.sh
+
+# 每小时执行风控监控（交易时间）
+0 9-15 * * 1-5 /path/to/stock/scripts/risk_monitoring.sh
+
+# 注意事项:
+# 1. 将 /path/to/stock 替换为实际项目路径
+# 2. 确保脚本有执行权限: chmod +x scripts/*.sh  
+# 3. 检查Python环境路径是否正确
+# 4. 建议先在测试环境验证

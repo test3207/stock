@@ -1,0 +1,19 @@
+{
+  "name": "stock-service",
+  "version": "0.1.0",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "dev": "ts-node-esm src/server.ts"
+  },
+  "dependencies": {
+    "fastify": "^4.26.2",
+    "fastify-swagger": "^8.12.0",
+    "@fastify/cors": "^8.4.0",
+    "dayjs": "^1.11.10"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0",
+    "ts-node": "^10.9.2"
+  }
+}

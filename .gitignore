@@ -1,0 +1,113 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual Environment
+.venv/
+venv/
+ENV/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# 数据文件（核心排除项）
+data/
+!data/.gitkeep
+
+# 备份文件
+backup/
+
+# 日志文件
+*.log
+logs/
+
+# 临时文件
+*.tmp
+*.temp
+.DS_Store
+Thumbs.db
+
+# Windows
+*.lnk
+
+# 特定排除：实时模拟系统的运行时数据
+# 实例数据（包含投资组合状态、交易记录、中断检查点）
+**/simulation/instances/
+**/simulation/cache/
+**/simulation/global_config.json
+
+# 执行状态和检查点文件（中断恢复数据）
+**/execution/*.json
+**/state/*.json
+**/trades/*.json
+**/logs/*.log
+**/performance/*.json
+
+# 缓存文件
+*.pkl
+*.parquet
+*.h5
+*.hdf5
+
+# 配置文件（可能包含敏感信息）
+config.json
+*.env
+.env.*
+
+# 量化交易系统特定排除项
+# API密钥和凭证
+credentials/
+certificates/
+api_keys.json
+*.secret.json
+*.prod.json
+*.production.json
+
+# 实盘交易相关（绝对不能提交）
+real_trading/
+production_config/
+
+# 回测结果（文件较大，可选择性提交）
+data/backtest/*.json
+
+# Jupyter Notebook检查点
+.ipynb_checkpoints/
+
+# 测试覆盖率
+.coverage
+htmlcov/
+.pytest_cache/
+
+# 数据库文件
+*.db
+*.sqlite
+*.sqlite3
+
+# 策略机密文件
+strategies/*.secret.py
+strategies/private_*

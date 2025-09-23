@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "stock-backtest"
+version = "0.1.0"
+description = "A-share backtest engine (daily, HS300)"
+authors = [ {name="Your Name"} ]
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+  "pandas>=2.2.0",
+  "numpy>=1.26.0",
+  "pyarrow>=15.0.0",
+  "polars>=0.20.0",
+  "akshare>=1.13.0",
+  "tqdm>=4.66.0",
+  "requests>=2.31.0"
+]
+
+[tool.setuptools.packages.find]
+# 在此 pyproject 所在目录下寻找包（包含 stock）
+where = ["."]
