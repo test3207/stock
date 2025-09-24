@@ -49,10 +49,12 @@ class ProductionSTFilter:
         # 创建过滤后的DataFrame
         filtered_df = basic_df.copy()
         
-        # 基础过滤：确保必要字段存在
+        # 基础过滤：确保必要字段存在，适配现有数据结构
+        # 兼容 'code' 或 'symbol' 列名
+        symbol_col = 'symbol' if 'symbol' in filtered_df.columns else 'code'
         primary_filter = (
-            filtered_df['symbol'].notna() & 
-            (filtered_df['symbol'] != '')
+            filtered_df[symbol_col].notna() & 
+            (filtered_df[symbol_col] != '')
         )
         
         # 检查是否有is_st列（数据中已包含ST信息）
@@ -62,7 +64,8 @@ class ProductionSTFilter:
             print(f"   使用数据中的is_st字段进行过滤")
         else:
             # 代码层面过滤（快速且可靠）
-            st_filter = ~filtered_df['symbol'].apply(self.is_st_by_symbol)
+            symbol_col = 'symbol' if 'symbol' in filtered_df.columns else 'code'
+            st_filter = ~filtered_df[symbol_col].apply(self.is_st_by_symbol)
             print(f"   使用代码模式识别进行ST过滤")
         
         # 检查是否有name列
@@ -80,7 +83,7 @@ class ProductionSTFilter:
         else:
             # 没有name列时，只使用基础过滤和ST过滤
             final_filter = primary_filter & st_filter
-            print(f"   数据中无name列，仅使用symbol和is_st字段过滤")
+            print(f"   数据中无name列，仅使用{symbol_col}和is_st字段过滤")
         
         filtered_result = filtered_df[final_filter]
         
@@ -192,9 +195,15 @@ class EnhancedDrawdownStrategy:
         print(f"   ST过滤后可用股票池: {len(non_st_symbols)}只")
         
         # 过滤低流动性和异常股票
-        volume_threshold = np.percentile([s['avg_volume'] for s in scores.values()], 20)
-        market_threshold = np.percentile([s['market_proxy'] for s in scores.values()], 10)
-        price_threshold = np.percentile([s['current_price'] for s in scores.values()], 90)
+        available_scores = [scores[sym] for sym in scores.keys() if sym in non_st_symbols]
+        
+        if not available_scores:
+            print("   ❌ 没有可用股票（全部被ST过滤或无效数据）")
+            return [], "empty_after_st_filter", 0, 0
+        
+        volume_threshold = np.percentile([s['avg_volume'] for s in available_scores], 20)
+        market_threshold = np.percentile([s['market_proxy'] for s in available_scores], 10)
+        price_threshold = np.percentile([s['current_price'] for s in available_scores], 90)
         
         # 应用多重过滤条件
         valid_stocks = {}

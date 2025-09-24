@@ -16,10 +16,15 @@ import akshare as ak
 import time
 warnings.filterwarnings('ignore')
 
-# 导入策略类（遵循项目架构）
+# 导入策略类（遵循项目分层架构）
 import sys
 import os
-sys.path.append(os.path.join(os.path.dirname(__file__), 'python'))
+
+# 直接添加python目录到路径
+python_path = os.path.join(os.path.dirname(__file__), 'python')
+if python_path not in sys.path:
+    sys.path.insert(0, python_path)
+
 from stock.strategies.enhanced_drawdown_strategy import EnhancedDrawdownStrategy
 
 class ProductionSTFilter:
@@ -290,15 +295,83 @@ class EnhancedBacktestEngine:
             'cash_ratio': (self.cash + self.idle_cash) / portfolio_value if portfolio_value > 0 else 1.0
         })
 
+def fetch_data_using_existing_pipeline():
+    """调用现有的改进数据抓取流水线"""
+    try:
+        print("   使用改进的数据抓取脚本...")
+        python_dir = os.path.join(os.path.dirname(__file__), 'python')
+        
+        # 使用subprocess调用，更可靠
+        import subprocess
+        env = os.environ.copy()
+        env['PYTHONPATH'] = python_dir
+        
+        result = subprocess.run([
+            'python', 
+            os.path.join(python_dir, 'stock', 'pipeline_fetch.py')
+        ], cwd=python_dir, capture_output=True, text=True, env=env)
+        
+        if result.returncode == 0:
+            print("✓ 改进数据抓取脚本执行成功")
+            
+            # 重命名文件以匹配预期格式
+            clean_dir = "data/clean"
+            if os.path.exists(f"{clean_dir}/price_history.parquet"):
+                if os.path.exists(f"{clean_dir}/price_history_5year.parquet"):
+                    os.remove(f"{clean_dir}/price_history_5year.parquet")
+                os.rename(f"{clean_dir}/price_history.parquet", f"{clean_dir}/price_history_5year.parquet")
+                print("   重命名 price_history.parquet -> price_history_5year.parquet")
+                
+            if os.path.exists(f"{clean_dir}/basic_info.parquet"):
+                if os.path.exists(f"{clean_dir}/basic_info_5year.parquet"):
+                    os.remove(f"{clean_dir}/basic_info_5year.parquet")
+                os.rename(f"{clean_dir}/basic_info.parquet", f"{clean_dir}/basic_info_5year.parquet")
+                print("   重命名 basic_info.parquet -> basic_info_5year.parquet")
+                
+            return True
+        else:
+            print(f"❌ 抓取脚本执行失败: {result.stderr}")
+            return False
+        
+    except Exception as e:
+        print(f"❌ 调用抓取脚本失败: {e}")
+        return False
+
 def load_data():
-    """加载数据"""
-    print("加载5年期完整数据...")
+    """智能数据加载：自动检查并抓取缺失数据"""
+    print("检查5年期数据完整性...")
+    
+    price_file = "data/clean/price_history_5year.parquet"
+    basic_file = "data/clean/basic_info_5year.parquet"
+    
+    # 检查数据文件是否存在
+    price_exists = os.path.exists(price_file)
+    basic_exists = os.path.exists(basic_file)
+    
+    if not price_exists or not basic_exists:
+        print("❌ 检测到数据缺失:")
+        if not price_exists:
+            print(f"   缺失: {price_file}")
+        if not basic_exists:
+            print(f"   缺失: {basic_file}")
+        
+        print("🚀 正在自动调用改进的数据抓取流水线...")
+        success = fetch_data_using_existing_pipeline()
+        if not success:
+            print("❌ 改进的数据抓取流水线失败，使用备用方案...")
+            choice = input("是否使用备用简化数据生成? (y/n): ").lower().strip()
+            if choice == 'y':
+                success = fetch_data_automatically()
+                if not success:
+                    return None, None
+            else:
+                return None, None
     
     try:
-        price_df = pd.read_parquet("data/clean/price_history_5year.parquet")
+        price_df = pd.read_parquet(price_file)
         price_df['date'] = pd.to_datetime(price_df['date']).dt.date
         
-        basic_df = pd.read_parquet("data/clean/basic_info_5year.parquet")
+        basic_df = pd.read_parquet(basic_file)
         
         print(f"✓ 价格数据: {price_df['symbol'].nunique()}只股票")
         print(f"✓ 时间范围: {price_df['date'].min()} 至 {price_df['date'].max()}")
@@ -309,6 +382,104 @@ def load_data():
     except Exception as e:
         print(f"❌ 数据加载失败: {e}")
         return None, None
+
+def fetch_data_automatically():
+    """自动抓取数据"""
+    try:
+        print("   正在抓取A股基础信息...")
+        # 创建必要目录
+        os.makedirs("data/raw", exist_ok=True)
+        os.makedirs("data/clean", exist_ok=True)
+        
+        # 抓取股票基础信息
+        print("   抓取股票列表...")
+        stock_list = ak.stock_info_a_code_name()
+        stock_list.to_parquet("data/raw/stock_list.parquet")
+        
+        # 过滤掉ST股票和北交所股票
+        print("   过滤股票池...")
+        st_filter = ProductionSTFilter()
+        filtered_stocks = st_filter.create_production_filter(stock_list)
+        
+        # 限制数量以加速测试（实际可调整）
+        top_stocks = filtered_stocks.head(100)
+        
+        print(f"   选择{len(top_stocks)}只股票进行历史数据抓取...")
+        
+        # 抓取历史价格数据
+        all_price_data = []
+        end_date = date.today().strftime('%Y%m%d')
+        start_date = (date.today() - timedelta(days=5*365)).strftime('%Y%m%d')
+        
+        from tqdm import tqdm
+        for i, (_, stock) in enumerate(tqdm(top_stocks.iterrows(), desc="抓取历史数据")):
+            try:
+                symbol = stock['code']
+                hist_data = ak.stock_zh_a_hist(symbol=symbol, start_date=start_date, end_date=end_date)
+                
+                if len(hist_data) > 0:
+                    hist_data['symbol'] = symbol
+                    hist_data['name'] = stock['name']
+                    all_price_data.append(hist_data)
+                    
+                time.sleep(0.1)  # 避免API限制
+                
+                if i > 0 and i % 20 == 0:  # 每20只股票休息一下
+                    time.sleep(1)
+                    
+            except Exception as e:
+                print(f"   跳过{symbol}: {e}")
+                continue
+        
+        if not all_price_data:
+            print("❌ 没有成功抓取到任何数据")
+            return False
+            
+        # 合并并保存数据
+        print("   整理和保存数据...")
+        price_df = pd.concat(all_price_data, ignore_index=True)
+        
+        # 标准化列名（按照原始schema）
+        price_df = price_df.rename(columns={
+            '开盘': 'open', '收盘': 'close', '最高': 'high', '最低': 'low',
+            '成交量': 'volume', '成交额': 'amount', '日期': 'date'
+        })
+        
+        # 添加日期列（如果重命名后没有生效）
+        if 'date' not in price_df.columns and '日期' in price_df.columns:
+            price_df['date'] = pd.to_datetime(price_df['日期']).dt.date
+        elif 'date' in price_df.columns:
+            price_df['date'] = pd.to_datetime(price_df['date']).dt.date
+        
+        # 选择必要列（符合原始schema，避免重复列）
+        available_cols = ['symbol', 'name', 'date', 'open', 'close', 'high', 'low', 'volume', 'amount']
+        price_cols = [col for col in available_cols if col in price_df.columns]
+        price_df = price_df[price_cols]
+        
+        # 去除重复列（如果存在）
+        price_df = price_df.loc[:, ~price_df.columns.duplicated()]
+        
+        # 保存数据（保持原始schema格式）
+        price_df.to_parquet("data/clean/price_history_5year.parquet")
+        
+        # 为basic_df按原始schema格式保存：['symbol','name','list_date','is_st','market','exchange']
+        basic_schema = top_stocks.copy()
+        basic_schema['symbol'] = basic_schema['code']  # 添加symbol列
+        basic_schema['list_date'] = pd.NaT  # 添加上市日期列（暂时为空）
+        basic_schema['is_st'] = False  # 添加ST标识（已过滤，设为False）
+        basic_schema['market'] = 'A'  # 添加市场标识
+        basic_schema['exchange'] = 'unknown'  # 添加交易所标识
+        
+        # 选择符合schema的列
+        basic_schema = basic_schema[['symbol', 'name', 'list_date', 'is_st', 'market', 'exchange']]
+        basic_schema.to_parquet("data/clean/basic_info_5year.parquet")
+        
+        print(f"✓ 数据抓取完成: {len(price_df):,}条记录")
+        return True
+        
+    except Exception as e:
+        print(f"❌ 数据抓取失败: {e}")
+        return False
 
 def run_production_friendly_backtest():
     """运行生产友好的回测"""
@@ -507,13 +678,15 @@ def run_production_friendly_backtest():
     print(f"\n✅ 回测完成！详细分析报告已生成。")
 
 def get_index_data():
-    """获取主要指数数据"""
+    """获取主要指数数据（带缓存）"""
+    from python.stock.data.akshare_provider import AkShareProvider
+    provider = AkShareProvider()
     index_data = {}
     
     try:
         # 获取沪深300数据
         print("正在获取沪深300指数数据...")
-        hs300_data = ak.index_zh_a_hist(symbol="000300", period="daily", start_date="20200101", end_date="20250831")
+        hs300_data = provider.get_index_data_cached("000300", "20200101", "20250831")
         if not hs300_data.empty:
             hs300_data['年份'] = pd.to_datetime(hs300_data['日期']).dt.year
             yearly_hs300 = []
@@ -533,7 +706,7 @@ def get_index_data():
         
         # 获取中证500数据
         print("正在获取中证500指数数据...")
-        csi500_data = ak.index_zh_a_hist(symbol="000905", period="daily", start_date="20200101", end_date="20250831")
+        csi500_data = provider.get_index_data_cached("000905", "20200101", "20250831")
         if not csi500_data.empty:
             csi500_data['年份'] = pd.to_datetime(csi500_data['日期']).dt.year
             yearly_csi500 = []
@@ -553,7 +726,7 @@ def get_index_data():
         
         # 获取上证指数数据
         print("正在获取上证指数数据...")
-        shanghai_data = ak.index_zh_a_hist(symbol="000001", period="daily", start_date="20200101", end_date="20250831")
+        shanghai_data = provider.get_index_data_cached("000001", "20200101", "20250831")
         if not shanghai_data.empty:
             shanghai_data['年份'] = pd.to_datetime(shanghai_data['日期']).dt.year
             yearly_shanghai = []

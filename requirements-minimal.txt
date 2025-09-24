@@ -1,0 +1,5 @@
+# Minimal core dependencies for running the main system
+pandas
+numpy
+akshare
+requests

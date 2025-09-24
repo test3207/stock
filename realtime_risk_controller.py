@@ -13,7 +13,6 @@
 
 import json
 import logging
-import pandas as pd
 from datetime import datetime, timedelta
 from typing import Dict, List, Tuple, Optional
 from pathlib import Path
@@ -22,7 +21,6 @@ import sys
 
 # 添加项目路径
 sys.path.append(str(Path(__file__).parent / "python"))
-from stock.data.akshare_provider import AkshareDataProvider
 
 class RealTimeRiskController:
     """实时风控监控器"""

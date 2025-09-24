@@ -1,0 +1,20 @@
+# 开发环境依赖（包含所有生产依赖 + 开发工具）
+-r requirements.txt
+
+# 代码格式化和质量检查
+black>=23.0.0
+isort>=5.12.0
+flake8>=6.0.0
+mypy>=1.5.0
+
+# Jupyter 支持（用于数据分析和可视化）
+jupyter>=1.0.0
+ipykernel>=6.25.0
+
+# 额外的数据可视化库
+plotly>=5.15.0
+mplfinance>=0.12.0
+
+# 性能分析工具
+line_profiler>=4.0.0
+memory_profiler>=0.61.0
