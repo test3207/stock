@@ -1,0 +1,106 @@
+name: Quantitative Trading Backtest
+
+on:
+  workflow_dispatch:
+    inputs:
+      output_format:
+        description: 'Output format'
+        required: false
+        default: 'json'
+        type: choice
+        options:
+        - json
+        - detailed
+  push:
+    branches: [ main ]
+    paths:
+      - 'main_quantitative_system.py'
+      - 'python/stock/**'
+
+env:
+  PYTHONPATH: ${{ github.workspace }}/python
+  BACKTEST_OUTPUT_DIR: ${{ github.workspace }}/backtest_results
+
+jobs:
+  backtest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+        cache: 'pip'
+        
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y build-essential
+        
+    - name: Install Python dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install akshare pandas numpy matplotlib seaborn pyarrow
+        # 安装项目内部包
+        if [ -f python/pyproject.toml ]; then
+          pip install -e python/
+        fi
+        
+    - name: Create output directory
+      run: mkdir -p ${{ env.BACKTEST_OUTPUT_DIR }}
+        
+    - name: Run main quantitative system
+      run: |
+        cd ${{ github.workspace }}
+        python main_quantitative_system.py
+      env:
+        AKSHARE_USER_AGENT: 'GitHub-Actions-Backtest'
+        
+    - name: Collect backtest results
+      run: |
+        # 查找生成的结果文件
+        find . -name "*backtest*.json" -o -name "*report*.json" -o -name "*results*.json" | head -10
+        
+        # 将找到的结果文件复制到输出目录
+        find . -name "*backtest*.json" -exec cp {} ${{ env.BACKTEST_OUTPUT_DIR }}/ \;
+        find . -name "*report*.json" -exec cp {} ${{ env.BACKTEST_OUTPUT_DIR }}/ \;
+        find . -name "*results*.json" -exec cp {} ${{ env.BACKTEST_OUTPUT_DIR }}/ \;
+        
+        # 检查输出目录内容
+        ls -la ${{ env.BACKTEST_OUTPUT_DIR }}/
+        
+    - name: Generate workflow summary
+      run: |
+        python scripts/ci/generate_workflow_summary.py \
+          "${{ env.BACKTEST_OUTPUT_DIR }}" \
+          "${{ github.run_id }}" \
+          "${{ github.sha }}" \
+          "${{ github.event_name }}" \
+          "${{ github.event.inputs.output_format || 'json' }}"
+
+    - name: Upload backtest artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: backtest-results-${{ github.run_id }}
+        path: |
+          ${{ env.BACKTEST_OUTPUT_DIR }}/
+          data/backtest/
+        retention-days: 30
+        if-no-files-found: warn
+        
+    - name: Display key metrics in console
+      run: python scripts/ci/display_key_metrics.py "${{ env.BACKTEST_OUTPUT_DIR }}"
+
+    - name: Display backtest summary
+      if: success()
+      run: |
+        echo ""
+        echo "✅ 回测完成！"
+        echo "� 完整结果查看方式："
+        echo "  1. 👆 查看上方控制台输出的关键指标"
+        echo "  2. 📦 下载 Artifacts 中的 backtest-results-${{ github.run_id }}"
+        echo "  3. 📄 在 JSON 文件中查看完整分析报告"

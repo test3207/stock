@@ -137,6 +137,7 @@ C:/dev/stock/.venv/Scripts/python.exe -c "
 import sys
 from pathlib import Path
 sys.path.append(str(Path('.').absolute()))
+sys.path.append('python/stock/tools')
 from realtime_asset_calculator import RealTimeAssetCalculator
 
 calc = RealTimeAssetCalculator()
@@ -144,10 +145,10 @@ calc.print_realtime_report('test')
 "
 
 # 详细版 - 查看每只股票的盈亏情况
-C:/dev/stock/.venv/Scripts/python.exe realtime_asset_calculator.py --instance test --detailed
+C:/dev/stock/.venv/Scripts/python.exe python/stock/tools/realtime_asset_calculator.py --instance test --detailed
 
 # 生产实例监控
-C:/dev/stock/.venv/Scripts/python.exe realtime_asset_calculator.py --instance default
+C:/dev/stock/.venv/Scripts/python.exe python/stock/tools/realtime_asset_calculator.py --instance default
 
 # 对比两个实例的表现
 C:/dev/stock/.venv/Scripts/python.exe -c "
@@ -592,7 +593,7 @@ echo "✅ prod实例备份完成: backup/prod_$(date +%Y%m%d)/"
 #### 获取详细P&L报告
 
 ```python
-C:/dev/stock/.venv/Scripts/python.exe realtime_asset_calculator.py --instance prod --detailed
+C:/dev/stock/.venv/Scripts/python.exe python/stock/tools/realtime_asset_calculator.py --instance prod --detailed
 ```
 
 #### 与历史回测对比
@@ -659,10 +660,10 @@ C:/dev/stock/.venv/Scripts/python.exe -c "exec(open('docs/common_commands.md').r
 C:/dev/stock/.venv/Scripts/python.exe simulation/main.py --mode cronjob --instance prod --task risk_monitoring
 
 # 实时价值监控
-C:/dev/stock/.venv/Scripts/python.exe realtime_asset_calculator.py --instance prod
+C:/dev/stock/.venv/Scripts/python.exe python/stock/tools/realtime_asset_calculator.py --instance prod
 
 # 查看详细P&L
-C:/dev/stock/.venv/Scripts/python.exe realtime_asset_calculator.py --instance prod --detailed
+C:/dev/stock/.venv/Scripts/python.exe python/stock/tools/realtime_asset_calculator.py --instance prod --detailed
 
 # 查看运行日志
 tail -n 20 data/simulation/instances/prod/logs/daily_rebalance.log
@@ -765,7 +766,7 @@ schtasks /query /tn "StockTradingRebalance"
 
 ```powershell
 # 创建每小时实时价值监控任务
-schtasks /create /tn "StockTradingMonitor" /tr "C:\dev\stock\.venv\Scripts\python.exe C:\dev\stock\realtime_asset_calculator.py --instance prod" /sc hourly /st 09:30 /et 15:00 /f
+schtasks /create /tn "StockTradingMonitor" /tr "C:\dev\stock\.venv\Scripts\python.exe C:\dev\stock\python\stock\tools\realtime_asset_calculator.py --instance prod" /sc hourly /st 09:30 /et 15:00 /f
 
 # 验证任务创建
 schtasks /query /tn "StockTradingMonitor"
@@ -823,7 +824,7 @@ crontab -e
 30 15 28-31 * 1-5 [ $(date -d tomorrow +\%d) -eq 1 ] && cd /path/to/stock && /path/to/.venv/bin/python simulation/main.py --mode cronjob --instance prod --task daily_rebalance
 
 # 每小时实时监控（交易时间内）
-30 9-15 * * 1-5 cd /path/to/stock && /path/to/.venv/bin/python realtime_asset_calculator.py --instance prod
+30 9-15 * * 1-5 cd /path/to/stock && /path/to/.venv/bin/python python/stock/tools/realtime_asset_calculator.py --instance prod
 ```
 
 ### 🔧 Cronjob模式优化
@@ -917,7 +918,7 @@ Write-Host "2. 执行风控检查..." -ForegroundColor Yellow
 
 # 3. 获取实时价值
 Write-Host "3. 获取实时价值..." -ForegroundColor Yellow
-& C:\dev\stock\.venv\Scripts\python.exe realtime_asset_calculator.py --instance prod
+& C:\dev\stock\.venv\Scripts\python.exe python\stock\tools\realtime_asset_calculator.py --instance prod
 
 Write-Host "=== 监控完成 ===" -ForegroundColor Green
 "@ | Out-File -FilePath "monitor_prod.ps1" -Encoding UTF8
@@ -958,7 +959,7 @@ Write-Host "执行智能调仓..." -ForegroundColor Green
 & C:\dev\stock\.venv\Scripts\python.exe simulation\main.py --mode cronjob --instance prod --task daily_rebalance
 
 Write-Host "调仓完成，查看结果..." -ForegroundColor Green
-& C:\dev\stock\.venv\Scripts\python.exe realtime_asset_calculator.py --instance prod
+& C:\dev\stock\.venv\Scripts\python.exe python\stock\tools\realtime_asset_calculator.py --instance prod
 "@ | Out-File -FilePath "smart_rebalance.ps1" -Encoding UTF8
 
 Write-Host "✅ 智能调仓脚本已创建: smart_rebalance.ps1"
@@ -989,7 +990,7 @@ schtasks /create /tn "StockTradingRiskCheck" /tr "C:\dev\stock\.venv\Scripts\pyt
 schtasks /create /tn "StockTradingRebalance" /tr "C:\dev\stock\smart_rebalance.ps1" /sc monthly /mo lastday /st 15:30 /f
 
 # 3. 创建实时监控（工作日每2小时）
-schtasks /create /tn "StockTradingMonitor" /tr "C:\dev\stock\.venv\Scripts\python.exe C:\dev\stock\realtime_asset_calculator.py --instance prod" /sc weekly /d MON,TUE,WED,THU,FRI /ri 120 /st 09:30 /et 15:00 /f
+schtasks /create /tn "StockTradingMonitor" /tr "C:\dev\stock\.venv\Scripts\python.exe C:\dev\stock\python\stock\tools\realtime_asset_calculator.py --instance prod" /sc weekly /d MON,TUE,WED,THU,FRI /ri 120 /st 09:30 /et 15:00 /f
 
 Write-Host "✅ 所有自动化任务已配置完成！"
 Write-Host "可以使用以下命令查看："

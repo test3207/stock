@@ -174,9 +174,9 @@ def test_data_providers():
     print("\n=== 测试数据提供者 ===")
     
     try:
-        from python.stock.data.akshare_provider import AkshareDataProvider
+        from python.stock.data.akshare_provider import AkShareProvider
         
-        provider = AkshareDataProvider()
+        provider = AkShareProvider()
         
         # 测试基本信息获取
         print("测试基本信息获取...")

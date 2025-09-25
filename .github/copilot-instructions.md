@@ -27,11 +27,12 @@
 - **交易成本**：佣金万1 + 印花税千1（卖出） + 滑点8bp（生产级现实参数）
 - **风控机制**：个股止损-15%/止盈+20%，触发后资金闲置至下次调仓
 
-### 1.3 生产级性能指标（5年实测）
-- **年化收益**：11.7%（超越沪深300基准3.2%）
-- **最大回撤**：-31.0%（可控风险范围）
-- **夏普比率**：0.52（良好风险调整收益）
-- **胜率**：57.8%，年化换手率：2.1倍
+### 1.3 生产级性能指标（5.2年实测，2025-09-25更新）
+- **年化收益**：16.72%（超越沪深300基准5.5%）
+- **总收益率**：122.24%（5.2年期）
+- **最大回撤**：-30.62%（可控风险范围）
+- **夏普比率**：0.71（优秀风险调整收益）
+- **年化波动率**：23.52%，交易成本：21.42%
 
 ## 2. 系统架构设计
 ### 2.1 历史回测系统（已完成）
@@ -43,45 +44,73 @@
 - **风控层**：个股止损止盈 + 资金管理
 - **评估层**：全面绩效指标 + 年度基准对比
 
-### 2.2 实时数据模拟系统（设计目标）
+### 2.2 实时数据模拟系统（已完成，2025-09-25）
 **核心设计原则**：可中断、可恢复、完整状态保存
-- **cronjob驱动**：每日定时执行，获取最新真实市场数据
-- **状态持久化**：每日交易结果保存为JSON文件到本地
-- **断点恢复**：系统可从任意日期中断点继续执行
-- **跨机器迁移**：通过状态文件实现完整系统迁移
-- **实时ST过滤**：使用生产级三层验证机制
+- **cronjob驱动**：每日定时执行，获取最新真实市场数据 ✅
+- **状态持久化**：每日交易结果保存为JSON文件到本地 ✅
+- **断点恢复**：系统可从任意日期中断点继续执行 ✅
+- **跨机器迁移**：通过状态文件实现完整系统迁移 ✅
+- **实时ST过滤**：使用生产级三层验证机制 ✅
+- **多实例管理**：支持test/default/production等多实例隔离 ✅
 
-**数据存储结构**：
+**核心组件架构**：
 ```
-data/simulation/
-├── portfolio_state/
-│   ├── 2025-09-23.json  # 每日组合状态
-│   ├── 2025-09-24.json
-│   └── ...
-├── trading_records/
-│   ├── 2025-09-23_trades.json  # 每日交易记录
-│   ├── 2025-09-24_trades.json
-│   └── ...
-└── system_config.json  # 系统配置与检查点
+simulation/
+├── core/                              # 核心组件
+│   ├── instance_manager.py            # 实例管理器
+│   ├── state_manager.py               # 状态管理器
+│   ├── cache_manager.py               # 缓存管理器
+│   ├── scheduler.py                   # 调度器
+│   └── task_execution_manager.py      # 任务执行管理器
+├── engines/                           # 执行引擎
+│   ├── strategy_engine.py             # 策略引擎
+│   ├── trading_engine.py              # 交易引擎
+│   └── risk_engine.py                 # 风控引擎
+├── cronjobs/                          # 定时任务
+│   ├── daily_rebalance.py             # 日度调仓
+│   ├── risk_monitoring.py             # 风控监控
+│   └── data_update.py                 # 数据更新
+└── main.py                            # 主程序入口
 ```
 
-**状态文件格式**：
+**数据存储结构**（已实现）：
+```
+data/simulation/instances/{instance}/
+├── config.json                        # 实例配置
+├── state/                             # 每日状态文件
+│   ├── 2025-09-23.json
+│   ├── 2025-09-25.json
+│   └── ...
+├── trades/                            # 交易记录
+│   ├── 2025-09-23_trades.json
+│   ├── 2025-09-25_trades.json
+│   └── ...
+├── execution/                         # 任务执行记录
+├── logs/                              # 日志文件
+└── performance/                       # 绩效分析
+```
+
+**状态文件格式**（已实现）：
 ```json
 {
-  "date": "2025-09-23",
+  "date": "2025-09-25",
   "portfolio": {
-    "cash": 850000.0,
-    "idle_cash": 150000.0,
-    "positions": {"000001.SZ": {"shares": 1000, "cost": 12.5}},
-    "market_value": 1000000.0,
-    "total_value": 1850000.0
+    "cash": 35063.68,
+    "idle_cash": 0.0,
+    "positions": {
+      "000001.SZ": {"shares": 2600, "cost": 11.43, "amount": 29718.0}
+    },
+    "market_value": 969398.0,
+    "total_value": 1004461.68
   },
   "risk_control": {
-    "triggered_stocks": ["000002.SZ"],
-    "stop_loss_count": 2,
-    "take_profit_count": 1
+    "triggered_stocks": [],
+    "stop_loss_count": 0,
+    "take_profit_count": 0,
+    "last_risk_check": "2025-09-25T10:01:37"
   },
-  "next_rebalance_date": "2025-10-31"
+  "next_rebalance_date": "2025-10-31",
+  "timestamp": "2025-09-25T10:00:55"
 }
 ```
 
@@ -174,22 +203,22 @@ c:\dev\stock\                              # 项目根目录
 │   │   └── price_history_5year.parquet    # 5年价格历史
 │   ├── features/                          # 特征数据
 │   ├── raw/                               # 原始数据缓存
-│   └── simulation/                        # 实时模拟数据（新增）
+│   └── simulation/                        # 实时模拟数据（已完成）
 │       ├── instances/                     # 多实例管理
-│       │   ├── default/                   # 默认实例
+│       │   ├── test/                      # 测试实例
 │       │   │   ├── config.json            # 实例配置
 │       │   │   ├── state/                 # 每日状态文件
 │       │   │   ├── trades/                # 交易记录
 │       │   │   ├── logs/                  # 日志文件
 │       │   │   └── performance/           # 绩效分析
-│       │   ├── conservative/              # 保守策略实例
-│       │   └── aggressive/                # 激进策略实例
+│       │   ├── default/                   # 默认实例
+│       │   └── production/                # 生产实例
 │       ├── cache/                         # 数据缓存
 │       │   ├── market_data/               # 市场数据缓存
 │       │   ├── reference_data/            # 参考数据
 │       │   └── metadata/                  # 元数据
 │       ├── templates/                     # 配置模板
-│       └── global_config.json             # 全局配置
+│       └── system_config.json             # 全局配置
 ├── docs/                                  # 文档目录
 │   ├── realtime_simulation_architecture.md # 实时模拟系统架构设计
 │   ├── 历史回测系统文档.md                 # 历史回测系统完整文档
@@ -207,16 +236,18 @@ c:\dev\stock\                              # 项目根目录
 │       ├── interfaces/                    # 接口定义
 │       ├── strategies/
 │       │   └── drawdown_reversal.py       # 策略实现
+│       ├── tools/                         # 工具集
+│       │   └── realtime_asset_calculator.py # 实时资产计算
 │       ├── utils/                         # 工具函数
 │       ├── pipeline_fetch.py              # 数据抓取流水线
 │       └── run_backtest.py                # 回测运行脚本
-├── simulation/                            # 实时模拟系统（新增）
+├── simulation/                            # 实时模拟系统（已完成）
 │   ├── core/                              # 核心组件
 │   │   ├── instance_manager.py            # 实例管理器
 │   │   ├── state_manager.py               # 状态管理器
 │   │   ├── cache_manager.py               # 缓存管理器
 │   │   ├── scheduler.py                   # 调度器
-│   │   └── monitor.py                     # 监控器
+│   │   └── task_execution_manager.py      # 任务执行管理器
 │   ├── engines/                           # 执行引擎
 │   │   ├── strategy_engine.py             # 策略引擎
 │   │   ├── trading_engine.py              # 交易引擎
@@ -226,22 +257,23 @@ c:\dev\stock\                              # 项目根目录
 │   │   ├── risk_monitoring.py             # 风控监控
 │   │   └── data_update.py                 # 数据更新
 │   └── main.py                            # 主程序入口
-├── main_quantitative_system.py           # 主量化交易系统（586行）
+├── main_quantitative_system.py           # 主量化交易系统（594行）
 ├── complete_backtest_system.py           # 完整回测系统（656行）
-├── realtime_simulation_system.py         # 实时模拟系统（新增）
-└── realtime_risk_controller.py           # 实时风控监控（新增）
+├── realtime_simulation_system.py         # 实时模拟系统测试入口
+└── realtime_risk_controller.py           # 实时风控监控（未完成）
 ```
 
 ## 6. 关键目录与工具文档
 - `main_quantitative_system.py` **主量化交易系统**：594行完整生产系统+完整风控+资金管理（3bp滑点优化）。
 - `complete_backtest_system.py` **主回测系统**：5年期707只股票+完整风控+资金管理。
-- `realtime_simulation_system.py` **实时模拟系统**：cronjob驱动的真实数据模拟交易。
+- `simulation/main.py` **实时模拟系统**：cronjob驱动的真实数据模拟交易（已完成）。
 - `realtime_risk_controller.py` **实时风控监控**：每时每刻监控风险，自动执行交易。
 - `python/stock/data/akshare_provider.py` 数据提供者。
 - `python/stock/engine/backtest.py` 回测执行（T+1、换手拆分）。
 - `python/stock/engine/metrics.py` 绩效指标。
 - `python/stock/strategies/drawdown_reversal.py` 策略逻辑。
 - `python/stock/pipeline_fetch.py` 最小抓取流水线。
+- `python/stock/tools/realtime_asset_calculator.py` 实时资产计算工具。
 - `data/clean/` -> `price_history_5year.parquet`, `basic_info_5year.parquet`；`data/backtest/` -> 输出结果。
 - **docs/历史回测系统文档.md** **历史回测系统完整文档**：包含策略说明、风险指标、实盘部署建议。
 - **docs/common_commands.md** **常用命令参考文档**：包含所有测试和生产命令的复制粘贴版本。
@@ -249,8 +281,9 @@ c:\dev\stock\                              # 项目根目录
 ### 6.1 实例管理体系
 - **test实例**：测试专用，独立数据目录，便于快速清理重来
 - **default实例**：主模拟实例，正式交易模拟
+- **production实例**：生产环境实例，严格风控
 - **实例路径**：`data/simulation/instances/{instance_name}/`
-- **推荐工作流**：先用test实例验证，确认无误后使用default实例
+- **推荐工作流**：先用test实例验证，确认无误后使用default实例，最终部署到production实例
 
 ## 7. 交互风格 / 规则
 - 回答给出直接可执行改动；多步骤任务逐项完成并更新 todo 状态。
@@ -345,25 +378,36 @@ c:\dev\stock\                              # 项目根目录
 - 理解"质量优于数量"选股逻辑
 - 具备3-6个月的回撤恢复心理准备
 
-## 11. 默认下一步执行步骤（收到"继续"即实施）
-**当前优先级**：风控系统优化 > 实时模拟系统开发
+## 11. 项目管理文档
 
-1. **实施月度风控改进**：
+### 任务跟踪体系
+- **`.github/task-status.md`** - 当前进行中任务、已完成任务、待完成任务优先级清单
+- **`.github/copilot-instructions.md`** - 项目统一上下文、系统架构、核心参数
+
+### 使用说明
+- **日常任务管理**: 查看和更新 `task-status.md`
+- **技术上下文**: 使用 `copilot-instructions.md` 恢复会话状态
+
+## 12. 默认下一步执行步骤（收到"继续"即实施）
+**当前优先级**：实时模拟系统生产化运行 > 风控系统优化
+
+1. **实时模拟系统生产部署**：
+   - 配置production实例，确保生产级别的参数设置
+   - 建立每日定时任务（cronjob）自动执行架构
+   - 实现监控和告警机制，异常情况及时通知
+   - 建立备份和灾难恢复机制
+
+2. **实施高级风控改进**：
    - 实现月度止损机制（单月亏损>8%减仓）
-   - 加入VIX波动率监控
+   - 加入市场波动率监控（VIX指标等）
    - 设计流动性预警系统
-   - 集成市场情绪指标
+   - 集成市场情绪指标（恐惧贪婪指数）
 
-2. **创建实时数据模拟系统框架**：
-   - 设计JSON状态文件格式（组合状态、交易记录、系统配置）
-   - 实现状态持久化与恢复机制
-   - 建立cronjob兼容的单日执行模块
-   - 实现断点恢复与跨机器迁移支持
-
-3. **系统集成与测试**：
-   - 集成改进的风控机制到实时系统
-   - 建立每日状态检查与异常处理机制
-   - 输出完整的实时模拟系统使用说明
+3. **系统性能优化与监控**：
+   - 建立实时性能监控看板
+   - 优化数据缓存和API调用效率
+   - 实现交易成本分析和优化
+   - 建立系统健康检查机制
 
 ---
-（粘贴本文件后输入 `继续` 可开始风控系统优化，或输入 `改动：实时系统` 可直接开发模拟系统。）
+（粘贴本文件后输入 `继续` 可开始生产化部署，或输入 `改动：风控优化` 可直接开发高级风控机制。）

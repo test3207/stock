@@ -71,7 +71,7 @@ function Show-TaskStatus {
 function Invoke-Monitor {
     Write-Host "🔍 执行实时监控..." -ForegroundColor Yellow
     Set-Location $WorkDir
-    & $PythonExe "$WorkDir\realtime_asset_calculator.py" --instance prod
+    & $PythonExe "$WorkDir\python\stock\tools\realtime_asset_calculator.py" --instance prod
 }
 
 function Invoke-Rebalance {

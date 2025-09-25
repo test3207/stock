@@ -318,6 +318,122 @@ class AkShareProvider(DataProvider):
         # Placeholder: could use ak.stock_history_dividend
         return pd.DataFrame(columns=['symbol','action_date','type','value'])
 
+    def get_index_data_cached(self, index_code: str, start_date: str, end_date: str) -> pd.DataFrame:
+        """
+        获取指数历史数据（带缓存）
+        
+        Args:
+            index_code: 指数代码，如 "000300"(沪深300), "000905"(中证500), "000001"(上证指数)
+            start_date: 开始日期，格式 "20200101"
+            end_date: 结束日期，格式 "20250831"
+            
+        Returns:
+            pd.DataFrame: 包含日期、收盘价等字段的指数数据
+        """
+        # 生成缓存文件路径
+        cache_file = os.path.join(CACHE_DIR, f'index_{index_code}_{start_date}_{end_date}.parquet')
+        
+        # 尝试加载缓存
+        if os.path.exists(cache_file):
+            try:
+                mtime = os.path.getmtime(cache_file)
+                # 如果缓存不到1天，直接使用
+                if (time.time() - mtime) < 86400:
+                    cached_df = pd.read_parquet(cache_file)
+                    if not cached_df.empty:
+                        return cached_df
+            except Exception as e:
+                print(f"[WARN] 读取指数缓存失败 {index_code}: {e}")
+        
+        # 从akshare获取指数数据
+        try:
+            df = ak.stock_zh_index_daily(symbol=f"sh{index_code}")
+            if df.empty:
+                print(f"[WARN] 未获取到指数数据: {index_code}")
+                return pd.DataFrame()
+            
+            # 标准化列名
+            rename_map = {
+                'date': '日期',
+                'open': '开盘',
+                'high': '最高',
+                'low': '最低',
+                'close': '收盘',
+                'volume': '成交量'
+            }
+            for k, v in rename_map.items():
+                if k in df.columns:
+                    df.rename(columns={k: v}, inplace=True)
+            
+            # 确保有必要的列
+            if '日期' not in df.columns or '收盘' not in df.columns:
+                print(f"[ERROR] 指数数据缺少必要字段: {df.columns.tolist()}")
+                return pd.DataFrame()
+            
+            # 转换日期格式
+            df['日期'] = pd.to_datetime(df['日期'])
+            
+            # 过滤日期范围
+            start_dt = pd.to_datetime(start_date, format='%Y%m%d')
+            end_dt = pd.to_datetime(end_date, format='%Y%m%d')
+            df = df[(df['日期'] >= start_dt) & (df['日期'] <= end_dt)].copy()
+            
+            # 排序
+            df = df.sort_values('日期').reset_index(drop=True)
+            
+            # 保存缓存
+            try:
+                df.to_parquet(cache_file, index=False)
+            except Exception as e:
+                print(f"[WARN] 保存指数缓存失败 {index_code}: {e}")
+            
+            return df
+            
+        except Exception as e:
+            print(f"[ERROR] 获取指数数据失败 {index_code}: {e}")
+            return pd.DataFrame()
+    
+    def get_trading_calendar(self, start_date: str, end_date: str) -> pd.DataFrame:
+        """
+        获取交易日历
+        
+        Args:
+            start_date: 开始日期，格式 "20200101"  
+            end_date: 结束日期，格式 "20251231"
+            
+        Returns:
+            pd.DataFrame: 包含交易日期的DataFrame，列为 ['cal_date', 'is_open']
+        """
+        try:
+            # 使用akshare获取交易日历
+            df = ak.tool_trade_date_hist_sina()
+            
+            if df.empty:
+                print("[WARN] 未获取到交易日历数据")
+                return pd.DataFrame(columns=['cal_date', 'is_open'])
+            
+            # trade_date 是 datetime.date 对象，直接转换为字符串
+            df['cal_date'] = df['trade_date'].astype(str)
+            df['is_open'] = 1  # 交易日历中的日期都是交易日
+            
+            # 过滤日期范围 - 转换日期格式进行比较
+            start_dt = pd.to_datetime(start_date, format='%Y%m%d').date()
+            end_dt = pd.to_datetime(end_date, format='%Y%m%d').date()
+            
+            # 直接用 date 对象进行过滤
+            df = df[
+                (df['trade_date'] >= start_dt) & 
+                (df['trade_date'] <= end_dt)
+            ].copy()
+            
+            # 返回所需格式
+            return df[['cal_date', 'is_open']].reset_index(drop=True)
+            
+        except Exception as e:
+            print(f"[ERROR] 获取交易日历失败: {e}")
+            # 返回空DataFrame但包含正确的列结构
+            return pd.DataFrame(columns=['cal_date', 'is_open'])
+
     def get_daily_price(self, stock_codes: List[str], start_date: str, end_date: str) -> pd.DataFrame:
         """
         获取指定日期范围的日线数据

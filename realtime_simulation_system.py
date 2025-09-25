@@ -25,9 +25,9 @@ import sys
 
 # 添加项目路径以导入核心模块
 sys.path.append(str(Path(__file__).parent / "python"))
-from stock.data.akshare_provider import AkshareDataProvider
+from stock.data.akshare_provider import AkShareProvider
 from stock.strategies.drawdown_reversal import DrawdownReversalStrategy
-from stock.engine.metrics import PerformanceMetrics
+from stock.engine.metrics import performance_metrics
 
 class RealtimeSimulationSystem:
     """实时数据模拟交易系统"""
@@ -52,9 +52,9 @@ class RealtimeSimulationSystem:
         self.config_path = config_path or str(self.simulation_dir / "system_config.json")
         
         # 初始化组件
-        self.data_provider = AkshareDataProvider()
+        self.data_provider = AkShareProvider()
         self.strategy = DrawdownReversalStrategy()
-        self.metrics = PerformanceMetrics()
+        # self.metrics = PerformanceMetrics()  # 使用函数而非类
         
         # 系统状态
         self.portfolio_state = {}
@@ -278,7 +278,11 @@ class RealtimeSimulationSystem:
                 end_date.strftime('%Y%m%d')
             )
             
-            return pd.to_datetime(trading_calendar)
+            # 从DataFrame中提取cal_date列并转换为DatetimeIndex
+            if not trading_calendar.empty and 'cal_date' in trading_calendar.columns:
+                return pd.to_datetime(trading_calendar['cal_date'])
+            else:
+                return pd.DatetimeIndex([])
             
         except Exception as e:
             self.logger.error(f"获取交易日历失败: {e}")
@@ -300,9 +304,19 @@ class RealtimeSimulationSystem:
             date = datetime.now()
         
         try:
-            trading_dates = self.get_trading_dates()
-            date_str = date.strftime('%Y-%m-%d')
-            return pd.Timestamp(date_str) in trading_dates
+            # 直接从数据提供者获取交易日历并检查
+            end_date = datetime.now()
+            start_date = end_date - timedelta(days=365)
+            
+            trading_calendar = self.data_provider.get_trading_calendar(
+                start_date.strftime('%Y%m%d'),
+                end_date.strftime('%Y%m%d')
+            )
+            
+            # 使用日期字符串比较
+            check_date_str = date.strftime('%Y-%m-%d')
+            return check_date_str in trading_calendar['cal_date'].values
+            
         except Exception as e:
             self.logger.error(f"检查交易日失败: {e}")
             # 简单检查：非周末

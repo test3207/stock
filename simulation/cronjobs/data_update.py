@@ -15,7 +15,7 @@ from typing import Dict, List
 sys.path.append(str(Path(__file__).parent.parent.parent))
 
 from simulation.core.cache_manager import CacheManager
-from python.stock.data.akshare_provider import AkshareDataProvider
+from python.stock.data.akshare_provider import AkShareProvider
 
 def run_data_update():
     """执行数据更新任务"""
@@ -26,7 +26,7 @@ def run_data_update():
         
         # 初始化组件
         cache_manager = CacheManager()
-        data_provider = AkshareDataProvider()
+        data_provider = AkShareProvider()
         
         # 更新股票基本信息
         success_basic = _update_stock_basic_info(data_provider, cache_manager, logger)
@@ -55,7 +55,7 @@ def run_data_update():
         logger.error(f"数据更新任务失败: {e}", exc_info=True)
         return False
 
-def _update_stock_basic_info(data_provider: AkshareDataProvider, 
+def _update_stock_basic_info(data_provider: AkShareProvider, 
                            cache_manager: CacheManager, logger) -> bool:
     """更新股票基本信息"""
     try:
@@ -79,7 +79,7 @@ def _update_stock_basic_info(data_provider: AkshareDataProvider,
         logger.error(f"更新股票基本信息失败: {e}")
         return False
 
-def _update_st_stock_list(data_provider: AkshareDataProvider, 
+def _update_st_stock_list(data_provider: AkShareProvider, 
                          cache_manager: CacheManager, logger) -> bool:
     """更新ST股票列表"""
     try:
@@ -103,7 +103,7 @@ def _update_st_stock_list(data_provider: AkshareDataProvider,
         logger.error(f"更新ST股票列表失败: {e}")
         return False
 
-def _update_latest_prices(data_provider: AkshareDataProvider, 
+def _update_latest_prices(data_provider: AkShareProvider, 
                          cache_manager: CacheManager, logger) -> bool:
     """更新最新价格数据"""
     try:
