@@ -16,6 +16,8 @@ on:
     paths:
       - 'main_quantitative_system.py'
       - 'python/stock/**'
+      - '.github/workflows/backtest.yml'
+      - 'scripts/ci/**'
 
 env:
   PYTHONPATH: ${{ github.workspace }}/python
