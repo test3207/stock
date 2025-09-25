@@ -18,7 +18,7 @@ def generate_workflow_summary(output_dir, run_id, commit_sha, trigger, output_fo
             'run_id': run_id,
             'commit_sha': commit_sha,
             'trigger': trigger,
-            'python_version': '3.9'
+            'python_version': '3.13.7'
         },
         'system_info': {
             'backtest_system': 'main_quantitative_system.py',
