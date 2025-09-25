@@ -311,7 +311,7 @@ class EnhancedBacktestEngine:
 def fetch_data_using_existing_pipeline():
     """调用现有的改进数据抓取流水线"""
     try:
-        print("🚀 开始调用改进的数据抓取流水线...")
+        print("开始调用改进的数据抓取流水线...")
         python_dir = os.path.join(os.path.dirname(__file__), 'python')
         
         print(f"   Python目录: {python_dir}")
@@ -333,7 +333,7 @@ def fetch_data_using_existing_pipeline():
         
         # 详细输出subprocess的结果
         if result.stdout:
-            print("📝 pipeline_fetch.py 标准输出:")
+            print("pipeline_fetch.py 标准输出:")
             print("=" * 60)
             for line in result.stdout.split('\n'):
                 if line.strip():
@@ -341,7 +341,7 @@ def fetch_data_using_existing_pipeline():
             print("=" * 60)
         
         if result.stderr:
-            print("⚠️ pipeline_fetch.py 错误输出:")
+            print("pipeline_fetch.py 错误输出:")
             print("=" * 60)
             for line in result.stderr.split('\n'):
                 if line.strip():
@@ -349,7 +349,7 @@ def fetch_data_using_existing_pipeline():
             print("=" * 60)
         
         if result.returncode == 0:
-            print("✅ 改进数据抓取脚本执行成功")
+            print("改进数据抓取脚本执行成功")
             
             # 检查并重命名文件以匹配预期格式
             clean_dir = "data/clean"
@@ -359,27 +359,27 @@ def fetch_data_using_existing_pipeline():
                 if os.path.exists(f"{clean_dir}/price_history_5year.parquet"):
                     os.remove(f"{clean_dir}/price_history_5year.parquet")
                 os.rename(f"{clean_dir}/price_history.parquet", f"{clean_dir}/price_history_5year.parquet")
-                print("   ✓ 重命名 price_history.parquet -> price_history_5year.parquet")
+                print("   重命名 price_history.parquet -> price_history_5year.parquet")
             else:
-                print("   ⚠️ 未找到 price_history.parquet 文件")
+                print("   未找到 price_history.parquet 文件")
                 
             if os.path.exists(f"{clean_dir}/basic_info.parquet"):
                 if os.path.exists(f"{clean_dir}/basic_info_5year.parquet"):
                     os.remove(f"{clean_dir}/basic_info_5year.parquet")
                 os.rename(f"{clean_dir}/basic_info.parquet", f"{clean_dir}/basic_info_5year.parquet")
-                print("   ✓ 重命名 basic_info.parquet -> basic_info_5year.parquet")
+                print("   重命名 basic_info.parquet -> basic_info_5year.parquet")
             else:
-                print("   ⚠️ 未找到 basic_info.parquet 文件")
+                print("   未找到 basic_info.parquet 文件")
                 
             return True
         else:
-            print(f"❌ 抓取脚本执行失败，返回码: {result.returncode}")
+            print(f"抓取脚本执行失败，返回码: {result.returncode}")
             if result.stderr:
                 print(f"   错误信息: {result.stderr}")
             return False
         
     except Exception as e:
-        print(f"❌ 调用抓取脚本时发生异常: {type(e).__name__}: {e}")
+        print(f"调用抓取脚本时发生异常: {type(e).__name__}: {e}")
         import traceback
         print("   完整异常堆栈:")
         traceback.print_exc()
@@ -387,7 +387,7 @@ def fetch_data_using_existing_pipeline():
 
 def load_data():
     """智能数据加载：自动检查并抓取缺失数据"""
-    print("🔍 检查5年期数据完整性...")
+    print("检查5年期数据完整性...")
     
     price_file = "data/clean/price_history_5year.parquet"
     basic_file = "data/clean/basic_info_5year.parquet"
@@ -403,17 +403,23 @@ def load_data():
     print(f"   基础信息存在: {basic_exists}")
     
     if not price_exists or not basic_exists:
-        print("❌ 检测到数据缺失:")
+        print("检测到数据缺失:")
         if not price_exists:
             print(f"   缺失: {price_file}")
         if not basic_exists:
             print(f"   缺失: {basic_file}")
         
-        print("🚀 正在自动调用改进的数据抓取流水线...")
+        print("正在自动调用改进的数据抓取流水线...")
         success = fetch_data_using_existing_pipeline()
         if not success:
-            print("❌ 改进的数据抓取流水线失败，使用备用方案...")
-            choice = input("是否使用备用简化数据生成? (y/n): ").lower().strip()
+            print("改进的数据抓取流水线失败，使用备用方案...")
+            # 在GitHub Actions等非交互环境中自动使用备用方案
+            try:
+                choice = input("是否使用备用简化数据生成? (y/n): ").lower().strip()
+            except (EOFError, KeyboardInterrupt):
+                print("检测到非交互环境，自动使用备用方案...")
+                choice = 'y'
+            
             if choice == 'y':
                 success = fetch_data_automatically()
                 if not success:
@@ -422,13 +428,13 @@ def load_data():
                 return None, None
     
     try:
-        print("📖 开始加载数据文件...")
+        print("开始加载数据文件...")
         price_df = pd.read_parquet(price_file)
         price_df['date'] = pd.to_datetime(price_df['date']).dt.date
         
         basic_df = pd.read_parquet(basic_file)
         
-        print(f"✅ 数据加载成功:")
+        print(f"数据加载成功:")
         print(f"   价格数据: {price_df['symbol'].nunique()}只股票")
         print(f"   时间范围: {price_df['date'].min()} 至 {price_df['date'].max()}")
         print(f"   记录总数: {len(price_df):,}条")
@@ -436,15 +442,15 @@ def load_data():
         
         # 检查数据质量
         if len(price_df) == 0:
-            print("⚠️ 警告: 价格数据为空")
+            print("警告: 价格数据为空")
             
         if len(basic_df) == 0:
-            print("⚠️ 警告: 基础信息为空")
+            print("警告: 基础信息为空")
             
         return price_df, basic_df
         
     except Exception as e:
-        print(f"❌ 数据加载失败: {type(e).__name__}: {e}")
+        print(f"数据加载失败: {type(e).__name__}: {e}")
         import traceback
         print("   完整异常堆栈:")
         traceback.print_exc()
