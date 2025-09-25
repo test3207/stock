@@ -27,6 +27,19 @@ if python_path not in sys.path:
 
 from stock.strategies.enhanced_drawdown_strategy import EnhancedDrawdownStrategy
 
+# 导入时区感知工具
+try:
+    from stock.utils.timezone_helper import get_trading_timestamp, get_trading_date, get_cst_now
+except ImportError:
+    # 回退实现
+    from datetime import datetime
+    def get_trading_timestamp():
+        return datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    def get_trading_date():
+        return datetime.now().strftime('%Y-%m-%d')
+    def get_cst_now():
+        return datetime.now()
+
 class ProductionSTFilter:
     """
     生产环境ST过滤器
@@ -932,7 +945,7 @@ def generate_comprehensive_json_report(results_df, engine, strategy, risk_contro
     report = {
         "strategy_name": "enhanced_drawdown_strategy",
         "backtest_period": f"{start_date.strftime('%Y-%m-%d')}_to_{end_date.strftime('%Y-%m-%d')}",
-        "backtest_timestamp": pd.Timestamp.now().strftime('%Y-%m-%dT%H:%M:%S'),
+        "backtest_timestamp": get_trading_timestamp(),
         "backtest_duration_years": round(years, 1),
         "overall_performance": {
             "total_return": round(total_return, 2),
@@ -1025,14 +1038,14 @@ def generate_comprehensive_json_report(results_df, engine, strategy, risk_contro
             "limitations": "年度指数对比基于实际获取数据",
             "next_steps": "建议在实盘前进行1-3个月的纸上交易验证"
         },
-        "index_data_updated": pd.Timestamp.now().strftime('%Y-%m-%d %H:%M:%S')
+        "index_data_updated": get_trading_timestamp()
     }
     
     # 保存JSON文件
     output_dir = Path("data/backtest")
     output_dir.mkdir(parents=True, exist_ok=True)
     
-    filename = f"{report['strategy_name']}_backtest_{start_date.strftime('%Y')}-{end_date.strftime('%Y')}_{pd.Timestamp.now().strftime('%Y%m%d')}.json"
+    filename = f"{report['strategy_name']}_backtest_{start_date.strftime('%Y')}-{end_date.strftime('%Y')}_{get_trading_date().replace('-', '')}.json"
     filepath = output_dir / filename
     
     with open(filepath, 'w', encoding='utf-8') as f:

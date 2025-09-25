@@ -15,6 +15,18 @@ from typing import Dict, List, Optional, Tuple
 # 添加项目根路径
 sys.path.append(str(Path(__file__).parent.parent.parent))
 
+# 导入时区感知工具
+try:
+    from python.stock.utils.timezone_helper import get_trading_timestamp, get_trading_date, get_cst_now
+except ImportError:
+    # 回退实现
+    def get_trading_timestamp():
+        return datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    def get_trading_date():
+        return datetime.now().strftime('%Y-%m-%d')
+    def get_cst_now():
+        return datetime.now()
+
 from python.stock.data.akshare_provider import AkShareProvider
 from simulation.core.cache_manager import CacheManager
 
@@ -91,7 +103,7 @@ class RiskEngine:
                         "return_rate": return_rate,
                         "threshold": self.stop_loss_threshold,
                         "reason": f"触发止损: {return_rate:.2%} <= {self.stop_loss_threshold:.2%}",
-                        "trigger_time": datetime.now().isoformat()
+                        "trigger_time": get_trading_timestamp()
                     })
                 
                 # 检查止盈
@@ -104,7 +116,7 @@ class RiskEngine:
                         "return_rate": return_rate,
                         "threshold": self.take_profit_threshold,
                         "reason": f"触发止盈: {return_rate:.2%} >= {self.take_profit_threshold:.2%}",
-                        "trigger_time": datetime.now().isoformat()
+                        "trigger_time": get_trading_timestamp()
                     })
             
             if risk_triggers:
@@ -250,7 +262,7 @@ class RiskEngine:
             bool: 是否在交易时间
         """
         try:
-            now = datetime.now()
+            now = get_cst_now()
             weekday = now.weekday()
             
             # 周末不交易
@@ -359,7 +371,7 @@ class RiskEngine:
             report = f"""
 # 投资组合风控报告
 
-**生成时间**: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+**生成时间**: {get_trading_timestamp()}
 
 ## 基本信息
 - 总资产: {portfolio_state.get('total_value', 0):,.2f}
@@ -403,7 +415,7 @@ class RiskEngine:
             if not stock_codes:
                 return pd.DataFrame()
             
-            today = datetime.now().strftime('%Y-%m-%d')
+            today = get_trading_date()
             
             # 尝试从缓存获取
             cache_key = f"current_prices_{today}_{len(stock_codes)}"

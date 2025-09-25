@@ -14,6 +14,18 @@ from typing import Dict, List, Optional
 # 添加项目根路径
 sys.path.append(str(Path(__file__).parent.parent.parent))
 
+# 导入时区感知工具
+try:
+    from python.stock.utils.timezone_helper import get_trading_timestamp, get_trading_date, get_cst_now
+except ImportError:
+    # 回退实现
+    def get_trading_timestamp():
+        return datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    def get_trading_date():
+        return datetime.now().strftime('%Y-%m-%d')
+    def get_cst_now():
+        return datetime.now()
+
 from simulation.core.instance_manager import InstanceManager
 from simulation.core.state_manager import StateManager
 from simulation.core.cache_manager import CacheManager
@@ -70,10 +82,10 @@ def run_risk_monitoring(instance_name: str):
         if not risk_triggers:
             logger.info("风控检查通过，无需执行交易")
             # 更新检查时间
-            risk_control_state["last_check_time"] = datetime.now().isoformat()
+            risk_control_state["last_check_time"] = get_trading_timestamp()
             
             # 保存更新的状态
-            today = datetime.now().strftime('%Y-%m-%d')
+            today = get_trading_date()
             state_manager.save_daily_state(today, portfolio_state, risk_control_state)
             return True
         
@@ -107,10 +119,10 @@ def run_risk_monitoring(instance_name: str):
             elif trigger_type == "take_profit":
                 risk_control_state["take_profit_count"] += 1
         
-        risk_control_state["last_check_time"] = datetime.now().isoformat()
+        risk_control_state["last_check_time"] = get_trading_timestamp()
         
         # 保存状态
-        today = datetime.now().strftime('%Y-%m-%d')
+        today = get_trading_date()
         success = state_manager.save_daily_state(
             today, new_portfolio_state, risk_control_state, trading_records
         )
@@ -150,7 +162,7 @@ def run_portfolio_health_check(instance_name: str) -> Dict:
         risk_control_state = current_state["risk_control"]
         
         health_result = {
-            "timestamp": datetime.now().isoformat(),
+            "timestamp": get_trading_timestamp(),
             "instance": instance_name,
             "status": "healthy",
             "checks": {},

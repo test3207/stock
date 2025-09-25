@@ -14,6 +14,18 @@ from typing import Dict, List
 # 添加项目根路径
 sys.path.append(str(Path(__file__).parent.parent.parent))
 
+# 导入时区感知工具
+try:
+    from python.stock.utils.timezone_helper import get_trading_timestamp, get_trading_date, get_cst_now
+except ImportError:
+    # 回退实现
+    def get_trading_timestamp():
+        return datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    def get_trading_date():
+        return datetime.now().strftime('%Y-%m-%d')
+    def get_cst_now():
+        return datetime.now()
+
 from simulation.core.cache_manager import CacheManager
 from python.stock.data.akshare_provider import AkShareProvider
 
@@ -66,7 +78,7 @@ def _update_stock_basic_info(data_provider: AkShareProvider,
         
         if basic_info is not None and not basic_info.empty:
             # 缓存数据
-            cache_key = f"stock_basic_info_{datetime.now().strftime('%Y%m%d')}"
+            cache_key = f"stock_basic_info_{get_trading_date().replace('-', '')}"
             cache_manager.cache_reference_data(cache_key, basic_info, ttl_hours=24)
             
             logger.info(f"股票基本信息更新完成，共 {len(basic_info)} 条记录")
@@ -90,7 +102,7 @@ def _update_st_stock_list(data_provider: AkShareProvider,
         
         if st_stocks is not None:
             # 缓存数据
-            cache_key = f"st_stocks_{datetime.now().strftime('%Y%m%d')}"
+            cache_key = f"st_stocks_{get_trading_date().replace('-', '')}"
             cache_manager.cache_reference_data(cache_key, st_stocks, ttl_hours=24)
             
             logger.info(f"ST股票列表更新完成，共 {len(st_stocks)} 只股票")
@@ -110,10 +122,10 @@ def _update_latest_prices(data_provider: AkShareProvider,
         logger.info("更新最新价格数据...")
         
         # 获取当前日期
-        today = datetime.now().strftime('%Y-%m-%d')
+        today = get_trading_date()
         
         # 首先尝试从缓存获取股票列表
-        cache_key = f"stock_basic_info_{datetime.now().strftime('%Y%m%d')}"
+        cache_key = f"stock_basic_info_{get_trading_date().replace('-', '')}"
         basic_info = cache_manager.get_reference_data(cache_key)
         
         if basic_info is None:
@@ -194,14 +206,14 @@ def run_data_integrity_check() -> Dict:
         
         cache_manager = CacheManager()
         check_result = {
-            "timestamp": datetime.now().isoformat(),
+            "timestamp": get_trading_timestamp(),
             "status": "ok",
             "checks": {},
             "issues": []
         }
         
         # 检查基本信息数据
-        today_key = f"stock_basic_info_{datetime.now().strftime('%Y%m%d')}"
+        today_key = f"stock_basic_info_{get_trading_date().replace('-', '')}"
         basic_info = cache_manager.get_reference_data(today_key)
         
         if basic_info is None:
@@ -211,7 +223,7 @@ def run_data_integrity_check() -> Dict:
             check_result["checks"]["basic_info"] = f"ok ({len(basic_info)} records)"
         
         # 检查ST股票数据
-        st_key = f"st_stocks_{datetime.now().strftime('%Y%m%d')}"
+        st_key = f"st_stocks_{get_trading_date().replace('-', '')}"
         st_stocks = cache_manager.get_reference_data(st_key)
         
         if st_stocks is None:
@@ -221,7 +233,7 @@ def run_data_integrity_check() -> Dict:
             check_result["checks"]["st_stocks"] = f"ok ({len(st_stocks)} stocks)"
         
         # 检查价格数据
-        today = datetime.now().strftime('%Y-%m-%d')
+        today = get_trading_date()
         price_key = f"daily_price_{today}_batch_0"
         price_data = cache_manager.get_market_data(price_key)
         

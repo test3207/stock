@@ -18,6 +18,19 @@ from pathlib import Path
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Tuple
 
+# 导入时区感知工具
+try:
+    sys.path.append(str(Path(__file__).parent.parent.parent))
+    from python.stock.utils.timezone_helper import get_trading_timestamp, get_trading_date, get_cst_now
+except ImportError:
+    # 回退实现
+    def get_trading_timestamp():
+        return datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    def get_trading_date():
+        return datetime.now().strftime('%Y-%m-%d')
+    def get_cst_now():
+        return datetime.now()
+
 # 添加项目根路径
 sys.path.append(str(Path(__file__).parent.parent.parent))
 
@@ -85,7 +98,7 @@ class StrategyEngine:
                     'selection_mode': getattr(self, '_last_selection_mode', 'unknown'),
                     'total_candidates': len(selected_stocks)
                 },
-                'prepared_at': datetime.now().isoformat()
+                'prepared_at': get_trading_timestamp()
             }
             
             # 5. 保存交易计划
@@ -129,7 +142,7 @@ class StrategyEngine:
                 'selected_stocks': selected_stocks,
                 'current_prices': current_prices,
                 'strategy_info': trade_plan.get('strategy_info', {}),
-                'executed_at': datetime.now().isoformat()
+                'executed_at': get_trading_timestamp()
             }
             
             self.logger.info(f"✅ T日交易执行完成，{len(selected_stocks)} 只股票待交易")

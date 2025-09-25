@@ -12,6 +12,20 @@ from pathlib import Path
 from typing import Dict, Optional, List
 from datetime import datetime
 
+# 导入时区感知工具
+try:
+    import sys
+    sys.path.append(str(Path(__file__).parent.parent.parent))
+    from python.stock.utils.timezone_helper import get_trading_timestamp, get_trading_date, get_cst_now
+except ImportError:
+    # 回退实现
+    def get_trading_timestamp():
+        return datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    def get_trading_date():
+        return datetime.now().strftime('%Y-%m-%d')
+    def get_cst_now():
+        return datetime.now()
+
 class StateManager:
     """状态管理器"""
     
@@ -46,7 +60,7 @@ class StateManager:
             # 准备状态数据
             state_data = {
                 "date": date,
-                "timestamp": datetime.now().isoformat(),
+                "timestamp": get_trading_timestamp(),
                 "instance": self.instance_name,
                 "portfolio": portfolio_state,
                 "risk_control": risk_control_state,
@@ -209,7 +223,7 @@ class StateManager:
     def create_initial_state(self, initial_capital: float) -> bool:
         """创建初始状态"""
         try:
-            today = datetime.now().strftime('%Y-%m-%d')
+            today = get_trading_date()
             
             portfolio_state = {
                 "cash": initial_capital,

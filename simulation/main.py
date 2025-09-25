@@ -20,6 +20,18 @@ import logging
 # 添加项目根路径
 sys.path.append(str(Path(__file__).parent.parent))
 
+# 导入时区感知工具
+try:
+    from python.stock.utils.timezone_helper import get_trading_timestamp, get_trading_date, get_cst_now
+except ImportError:
+    # 回退实现
+    def get_trading_timestamp():
+        return datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    def get_trading_date():
+        return datetime.now().strftime('%Y-%m-%d')
+    def get_cst_now():
+        return datetime.now()
+
 from simulation.core.instance_manager import InstanceManager
 from simulation.core.scheduler import Scheduler
 from simulation.core.monitor import SystemMonitor
@@ -29,7 +41,7 @@ def setup_logging():
     log_dir = Path(__file__).parent.parent / "data" / "simulation" / "logs"
     log_dir.mkdir(parents=True, exist_ok=True)
     
-    log_file = log_dir / f"main_{datetime.now().strftime('%Y%m%d')}.log"
+    log_file = log_dir / f"main_{get_trading_date().replace('-', '')}.log"
     
     logging.basicConfig(
         level=logging.INFO,
@@ -169,7 +181,7 @@ def interactive_mode(instance_manager, monitor):
             elif choice == '8':
                 instance = input("实例名称 (默认default): ").strip() or 'default'
                 task_type = input("任务类型 (daily_rebalance/risk_monitoring): ").strip()
-                date = input("日期 YYYY-MM-DD (默认今日): ").strip() or datetime.now().strftime('%Y-%m-%d')
+                date = input("日期 YYYY-MM-DD (默认今日): ").strip() or get_trading_date()
                 
                 if task_type == 'daily_rebalance':
                     from simulation.cronjobs.daily_rebalance import run_daily_rebalance

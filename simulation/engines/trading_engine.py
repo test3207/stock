@@ -15,6 +15,18 @@ from typing import Dict, List, Optional, Tuple, Any
 # 添加项目根路径
 sys.path.append(str(Path(__file__).parent.parent.parent))
 
+# 导入时区感知工具
+try:
+    from python.stock.utils.timezone_helper import get_trading_timestamp, get_trading_date, get_cst_now
+except ImportError:
+    # 回退实现
+    def get_trading_timestamp():
+        return datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    def get_trading_date():
+        return datetime.now().strftime('%Y-%m-%d')
+    def get_cst_now():
+        return datetime.now()
+
 from python.stock.data.akshare_provider import AkShareProvider
 from simulation.core.cache_manager import CacheManager
 
@@ -230,7 +242,7 @@ class TradingEngine:
             
             # 执行风控交易
             return self.execute_trade_plan(portfolio_state, risk_trade_plan, 
-                                         datetime.now().strftime('%Y-%m-%d'))
+                                         get_trading_date())
             
         except Exception as e:
             self.logger.error(f"执行风控交易失败: {e}")
@@ -349,7 +361,7 @@ class TradingEngine:
         
         # 获取需要风控的股票价格
         risk_stocks = [trigger["stock_code"] for trigger in risk_triggers]
-        price_data = self._get_latest_prices(risk_stocks, datetime.now().strftime('%Y-%m-%d'))
+        price_data = self._get_latest_prices(risk_stocks, get_trading_date())
         
         for trigger in risk_triggers:
             stock_code = trigger["stock_code"]
@@ -380,7 +392,7 @@ class TradingEngine:
                 })
         
         return {
-            "target_date": datetime.now().strftime('%Y-%m-%d'),
+            "target_date": get_trading_date(),
             "trades": trades,
             "type": "risk_control"
         }
