@@ -46,11 +46,9 @@ jobs:
     - name: Install Python dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install akshare pandas numpy matplotlib seaborn pyarrow pytz
-        # 安装项目内部包
-        if [ -f python/pyproject.toml ]; then
-          pip install -e python/
-        fi
+        # 安装项目依赖（包含所有必要的包）
+        cd python && pip install -e .
+        cd ..
         
     - name: Create output directory
       run: mkdir -p ${{ env.BACKTEST_OUTPUT_DIR }}
