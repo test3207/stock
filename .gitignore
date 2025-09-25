@@ -36,8 +36,8 @@ env/
 *~
 
 # 数据文件（核心排除项）
-data/
-!data/.gitkeep
+/data/
+!/data/.gitkeep
 
 # 备份文件
 backup/
