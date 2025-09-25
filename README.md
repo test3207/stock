@@ -12,7 +12,21 @@
 
 ## 快速开始
 
-### 🚀 一键安装（推荐）
+### � GitHub数据备份配置（新功能）
+
+```bash
+# 交互式Token配置（推荐）
+python scripts/interactive_token_setup.py
+
+# 系统测试验证
+python scripts/test_system.py
+
+# 使用智能数据提供者
+from stock.data import IntegratedDataProvider
+provider = IntegratedDataProvider(auto_upload=True)
+```
+
+### �🚀 一键安装（推荐）
 
 **Windows用户：**
 

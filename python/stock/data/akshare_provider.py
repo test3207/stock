@@ -179,6 +179,26 @@ class AkShareProvider(DataProvider):
         return out
 
     def get_basic_info(self) -> pd.DataFrame:
+        """
+        获取A股基础信息
+        
+        返回数据结构 (已验证 2025-09-25):
+        DataFrame 包含以下列:
+        - symbol: str, 股票代码 (如 '000001.SZ', '600000.SH') 
+        - name: str, 股票名称 (如 '平安银行', '浦发银行')
+        - exchange: str, 交易所 ('SH' | 'SZ')
+        - is_st: bool, 是否ST股票
+        - market: str, 市场类型 (固定为'A')
+        - list_date: str, 上市日期 (YYYY-MM-DD格式, 可能为None)
+        
+        数据来源: akshare.stock_info_a_code_name()
+        原始数据转换:
+        - code -> symbol (补齐6位数字 + '.SH'或'.SZ')  
+        - name -> name (保持不变)
+        - 根据首位数字判断交易所(6开头=SH, 其他=SZ)
+        
+        缓存策略: 本地parquet文件, 1天过期
+        """
         # 若缓存存在且未过期(1天)则直接读取
         if os.path.exists(BASIC_INFO_CACHE):
             try:
@@ -444,7 +464,25 @@ class AkShareProvider(DataProvider):
             end_date: 结束日期 'YYYY-MM-DD'
             
         Returns:
-            pd.DataFrame: 包含股票价格数据，列包括 ts_code, trade_date, open, high, low, close, vol, amount
+            pd.DataFrame: 日K线数据
+            
+        返回数据结构 (已验证 2025-09-25):
+        DataFrame 包含以下列:
+        - ts_code: str, 股票代码 (如 '000001.SZ', '600000.SH')
+        - trade_date: str, 交易日期 (YYYYMMDD格式, 如 '20250925') 
+        - open: float, 开盘价
+        - high: float, 最高价  
+        - low: float, 最低价
+        - close: float, 收盘价
+        - vol: float, 成交量 (手)
+        - amount: float, 成交额 (元)
+        
+        数据来源: akshare.stock_zh_a_hist() 
+        注意: 
+        1. trade_date为YYYYMMDD格式，不是YYYY-MM-DD
+        2. 成交量单位为手，成交额单位为元
+        3. 可能包含停牌日数据(成交量为0)
+        4. 按股票代码和日期排序
         """
         try:
             import pandas as pd

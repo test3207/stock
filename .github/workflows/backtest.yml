@@ -22,6 +22,8 @@ on:
 env:
   PYTHONPATH: ${{ github.workspace }}/python
   BACKTEST_OUTPUT_DIR: ${{ github.workspace }}/backtest_results
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # 自动可用的token
+  # 如果需要自定义token，使用: GITHUB_TOKEN: ${{ secrets.CUSTOM_GITHUB_TOKEN }}
 
 jobs:
   backtest:
