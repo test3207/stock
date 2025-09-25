@@ -8,13 +8,28 @@ import os
 import sys
 from datetime import datetime
 
+# 尝试导入时区助手，如果失败则使用基本实现
+try:
+    # 添加项目路径
+    project_root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+    sys.path.insert(0, os.path.join(project_root, 'python'))
+    from stock.utils.timezone_helper import get_iso_timestamp, get_cst_now
+    
+    def get_timestamp():
+        return get_iso_timestamp()
+        
+except ImportError:
+    # 回退到基本实现
+    def get_timestamp():
+        return datetime.now().isoformat()
+
 def generate_workflow_summary(output_dir, run_id, commit_sha, trigger, output_format):
     """生成工作流摘要"""
     
     # 生成工作流摘要
     summary = {
         'workflow_info': {
-            'timestamp': datetime.now().isoformat(),
+            'timestamp': get_timestamp(),
             'run_id': run_id,
             'commit_sha': commit_sha,
             'trigger': trigger,

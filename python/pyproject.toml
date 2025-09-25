@@ -16,7 +16,8 @@ dependencies = [
   "polars>=0.20.0",
   "akshare>=1.13.0",
   "tqdm>=4.66.0",
-  "requests>=2.31.0"
+  "requests>=2.31.0",
+  "pytz>=2023.3"
 ]
 
 [tool.setuptools.packages.find]
